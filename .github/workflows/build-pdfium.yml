@@ -1,0 +1,80 @@
+name: Build PDFium
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-macos-arm64:
+    name: Build macOS arm64 PDFium artifact
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout PDFium
+        uses: actions/checkout@v4
+        with:
+          path: src/pdfium
+
+      - name: Install depot_tools
+        shell: bash
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$RUNNER_TEMP/depot_tools"
+          echo "$RUNNER_TEMP/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Create gclient config for unmanaged checkout
+        working-directory: src
+        shell: bash
+        run: |
+          cat > .gclient <<'EOF'
+          solutions = [
+            {
+              "name": "pdfium",
+              "url": "https://github.com/${{ github.repository }}.git",
+              "managed": False,
+              "custom_deps": {},
+              "custom_vars": {},
+            },
+          ]
+          target_os = ["mac"]
+          EOF
+
+      - name: Sync dependencies
+        working-directory: src
+        shell: bash
+        run: |
+          gclient sync --no-history --shallow
+
+      - name: Generate build files
+        working-directory: src/pdfium
+        shell: bash
+        run: |
+          gn gen out/Release --args='is_debug=false is_component_build=false pdf_is_complete_lib=true clang_use_chrome_plugins=false'
+
+      - name: Build PDFium library
+        working-directory: src/pdfium
+        shell: bash
+        run: |
+          ninja -C out/Release pdfium
+
+      - name: Collect build artifacts
+        working-directory: src/pdfium
+        shell: bash
+        run: |
+          mkdir -p artifact/lib artifact/include/public artifact/meta
+          find out/Release -name 'libpdfium*.a' -o -name 'libpdfium*.dylib' | while read -r f; do
+            cp "$f" artifact/lib/
+          done
+          cp -R public/. artifact/include/public/
+          cp LICENSE artifact/meta/
+          cp out/Release/args.gn artifact/meta/
+          test -n "$(find artifact/lib -type f -maxdepth 1 2>/dev/null)"
+
+      - name: Upload PDFium artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfium-macos-arm64
+          path: src/pdfium/artifact
+          if-no-files-found: error
