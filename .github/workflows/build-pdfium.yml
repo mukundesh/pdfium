@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifact/lib artifact/include/public artifact/meta
-          find out/Release -maxdepth 1 -type f \( -name 'libpdfium*.dylib' -o -name 'libpdfium*.so' -o -name 'pdfium.dll' \) | while read -r f; do
+          find out/Release -maxdepth 1 -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) | while read -r f; do
             cp "$f" artifact/lib/
           done
           cp public/*.h artifact/include/public/
@@ -75,6 +75,12 @@ jobs:
           cp LICENSE artifact/meta/
           cp out/Release/args.gn artifact/meta/
           test -n "$(find artifact/lib -type f -maxdepth 1 2>/dev/null)"
+
+      - name: Show collected runtime libraries
+        working-directory: src/pdfium
+        shell: bash
+        run: |
+          find artifact/lib -maxdepth 1 -type f | sort
 
       - name: Upload PDFium artifact
         uses: actions/upload-artifact@v4
