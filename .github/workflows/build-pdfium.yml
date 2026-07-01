@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout PDFium
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: src/pdfium
 
@@ -51,7 +51,7 @@ jobs:
         working-directory: src/pdfium
         shell: bash
         run: |
-          gn gen out/Release --args='is_debug=false is_component_build=false pdf_is_complete_lib=true clang_use_chrome_plugins=false'
+          gn gen out/Release --args='is_debug=false is_component_build=true clang_use_chrome_plugins=false'
 
       - name: Build PDFium library
         working-directory: src/pdfium
@@ -64,10 +64,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifact/lib artifact/include/public artifact/meta
-          find out/Release -name 'libpdfium*.a' -o -name 'libpdfium*.dylib' | while read -r f; do
+          find out/Release -maxdepth 1 -type f \( -name 'libpdfium*.dylib' -o -name 'libpdfium*.so' -o -name 'pdfium.dll' \) | while read -r f; do
             cp "$f" artifact/lib/
           done
-          cp -R public/. artifact/include/public/
+          cp public/*.h artifact/include/public/
+          if [ -d public/cpp ]; then
+            mkdir -p artifact/include/public/cpp
+            cp public/cpp/*.h artifact/include/public/cpp/
+          fi
           cp LICENSE artifact/meta/
           cp out/Release/args.gn artifact/meta/
           test -n "$(find artifact/lib -type f -maxdepth 1 2>/dev/null)"
