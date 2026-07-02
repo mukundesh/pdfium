@@ -70,6 +70,12 @@ class CPDF_TextPage {
 
     const CFX_Matrix& matrix() const { return matrix_; }
 
+    float font_size() const { return font_size_; }
+    int font_flags() const { return font_flags_; }
+    int font_weight() const { return font_weight_; }
+    int font_type() const { return font_type_; }
+    uint32_t font_obj_num() const { return font_obj_num_; }
+
     const CPDF_TextObject* text_object() const { return text_object_; }
     CPDF_TextObject* text_object() { return text_object_; }
 
@@ -81,6 +87,11 @@ class CPDF_TextPage {
     CFX_FloatRect char_box_;
     CFX_FloatRect loose_char_box_;
     CFX_Matrix matrix_;
+    float font_size_ = 0.0f;
+    int font_flags_ = 0;
+    int font_weight_ = -1;
+    int font_type_ = 0;
+    uint32_t font_obj_num_ = 0;
     UnownedPtr<CPDF_TextObject> text_object_;
   };
 

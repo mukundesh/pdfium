@@ -21,6 +21,7 @@
 #include "core/fpdfapi/page/cpdf_page.h"
 #include "core/fpdfapi/page/cpdf_pageobject.h"
 #include "core/fpdfapi/page/cpdf_textobject.h"
+#include "core/fpdfapi/parser/cpdf_array.h"
 #include "core/fpdfapi/parser/cpdf_dictionary.h"
 #include "core/fpdfapi/parser/cpdf_string.h"
 #include "core/fpdftext/unicodenormalizationdata.h"
@@ -40,6 +41,12 @@ namespace {
 
 constexpr float kDefaultFontSize = 1.0f;
 constexpr float kSizeEpsilon = 0.01f;
+constexpr int kTextItemFontUnknown = 0;
+constexpr int kTextItemFontType1 = 1;
+constexpr int kTextItemFontTrueType = 2;
+constexpr int kTextItemFontType3 = 3;
+constexpr int kTextItemFontCIDType0 = 4;
+constexpr int kTextItemFontCIDType2 = 5;
 constexpr std::array<pdfium::span<const uint16_t>, 3>
     kUnicodeDataNormalizationMaps = {{kUnicodeDataNormalizationMap2,
                                       kUnicodeDataNormalizationMap3,
@@ -279,6 +286,57 @@ float GetFontSize(const CPDF_TextObject* text_object) {
   return has_font ? text_object->GetFontSize() : kDefaultFontSize;
 }
 
+int GetFontType(const CPDF_Font* font) {
+  if (!font) {
+    return kTextItemFontUnknown;
+  }
+  if (font->IsType3Font()) {
+    return kTextItemFontType3;
+  }
+  if (font->IsCIDFont()) {
+    RetainPtr<const CPDF_Dictionary> font_dict = font->GetFontDict();
+    if (!font_dict) {
+      return kTextItemFontUnknown;
+    }
+    RetainPtr<const CPDF_Array> descendants =
+        font_dict->GetArrayFor("DescendantFonts");
+    RetainPtr<const CPDF_Dictionary> cid_font_dict =
+        descendants ? descendants->GetDictAt(0) : nullptr;
+    ByteString subtype =
+        cid_font_dict ? cid_font_dict->GetByteStringFor("Subtype") : "";
+    if (subtype == "CIDFontType0") {
+      return kTextItemFontCIDType0;
+    }
+    if (subtype == "CIDFontType2") {
+      return kTextItemFontCIDType2;
+    }
+    return kTextItemFontUnknown;
+  }
+  if (font->IsType1Font()) {
+    return kTextItemFontType1;
+  }
+  if (font->IsTrueTypeFont()) {
+    return kTextItemFontTrueType;
+  }
+  return kTextItemFontUnknown;
+}
+
+uint32_t GetFontObjNum(const CPDF_Font* font) {
+  if (!font) {
+    return 0;
+  }
+  RetainPtr<const CPDF_Dictionary> font_dict = font->GetFontDict();
+  return font_dict ? font_dict->GetObjNum() : 0;
+}
+
+int GetFontFlags(const CPDF_Font* font) {
+  return font ? font->GetFontFlags() : 0;
+}
+
+int GetFontWeight(const CPDF_Font* font) {
+  return font ? font->GetFontWeight().value_or(-1) : -1;
+}
+
 CFX_FloatRect GetLooseBounds(const CPDF_TextPage::CharInfo& charinfo) {
   if (charinfo.char_box().IsEmpty()) {
     return charinfo.char_box();
@@ -363,6 +421,12 @@ CPDF_TextPage::CharInfo::CharInfo(CharType char_type,
       char_box_(char_box),
       matrix_(matrix),
       text_object_(text_object) {
+  RetainPtr<CPDF_Font> font = text_object_ ? text_object_->GetFont() : nullptr;
+  font_size_ = GetFontSize(text_object_);
+  font_flags_ = GetFontFlags(font.Get());
+  font_weight_ = GetFontWeight(font.Get());
+  font_type_ = GetFontType(font.Get());
+  font_obj_num_ = GetFontObjNum(font.Get());
   loose_char_box_ = GetLooseBounds(*this);
 }
 

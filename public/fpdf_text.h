@@ -16,6 +16,40 @@
 extern "C" {
 #endif
 
+// Font type values returned by FPDF_TEXT_ITEM::font_type.
+#define FPDF_TEXT_ITEM_FONT_UNKNOWN 0
+#define FPDF_TEXT_ITEM_FONT_TYPE1 1
+#define FPDF_TEXT_ITEM_FONT_TRUETYPE 2
+#define FPDF_TEXT_ITEM_FONT_TYPE3 3
+#define FPDF_TEXT_ITEM_FONT_CIDTYPE0 4
+#define FPDF_TEXT_ITEM_FONT_CIDTYPE2 5
+
+// Experimental API.
+// Structure: FPDF_TEXT_ITEM
+//          Describes a single text-page item with its source code, geometry,
+//          and font metadata.
+typedef struct FPDF_TEXT_ITEM_ {
+  unsigned long char_code;
+  double left;
+  double bottom;
+  double right;
+  double top;
+  double loose_left;
+  double loose_bottom;
+  double loose_right;
+  double loose_top;
+  double origin_x;
+  double origin_y;
+  double font_size;
+  unsigned long font_obj_num;
+  int font_flags;
+  int font_weight;
+  int font_type;
+  int is_generated;
+  int has_unicode;
+  unsigned int unicode;
+} FPDF_TEXT_ITEM;
+
 // Function: FPDFText_LoadPage
 //          Prepare information about all characters in a page.
 // Parameters:
@@ -58,6 +92,19 @@ FPDF_EXPORT void FPDF_CALLCONV FPDFText_ClosePage(FPDF_TEXTPAGE text_page);
 //          has an index value of zero.
 //
 FPDF_EXPORT int FPDF_CALLCONV FPDFText_CountChars(FPDF_TEXTPAGE text_page);
+
+// Experimental API.
+// Function: FPDFText_CountItems
+//          Get number of text items in a page.
+// Parameters:
+//          text_page   -   Handle to a text page information structure.
+//                          Returned by FPDFText_LoadPage function.
+// Return value:
+//          Number of text items in the page. Return -1 for error.
+// Comments:
+//          For the current text-page implementation, item indices match
+//          character indices, including generated characters.
+FPDF_EXPORT int FPDF_CALLCONV FPDFText_CountItems(FPDF_TEXTPAGE text_page);
 
 // Function: FPDFText_GetUnicode
 //          Get Unicode of a character in a page.
@@ -173,6 +220,26 @@ FPDFText_GetFontInfo(FPDF_TEXTPAGE text_page,
                      void* buffer,
                      unsigned long buflen,
                      int* flags);
+
+// Experimental API.
+// Function: FPDFText_GetItemFontName
+//          Get the font name of a particular text item.
+// Parameters:
+//          text_page - Handle to a text page information structure.
+//                      Returned by FPDFText_LoadPage function.
+//          index     - Zero-based index of the item.
+//          buffer    - A buffer receiving the font name.
+//          buflen    - The length of |buffer| in bytes.
+// Return value:
+//          On success, return the length of the font name, including the
+//          trailing NUL character, in bytes. If this length is less than or
+//          equal to |buflen|, |buffer| is set to the font name. |buffer| is in
+//          UTF-8 encoding. Return 0 on failure.
+FPDF_EXPORT unsigned long FPDF_CALLCONV
+FPDFText_GetItemFontName(FPDF_TEXTPAGE text_page,
+                         int index,
+                         void* buffer,
+                         unsigned long buflen);
 
 // Experimental API.
 // Function: FPDFText_GetFontWeight
@@ -305,6 +372,21 @@ FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV FPDFText_GetCharBox(FPDF_TEXTPAGE text_page,
 //
 FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV
 FPDFText_GetLooseCharBox(FPDF_TEXTPAGE text_page, int index, FS_RECTF* rect);
+
+// Experimental API.
+// Function: FPDFText_GetItemInfo
+//          Get source code, geometry, and font metadata for a text item.
+// Parameters:
+//          text_page  - Handle to a text page information structure.
+//                       Returned by FPDFText_LoadPage function.
+//          index      - Zero-based index of the item.
+//          out_item   - Pointer to a structure receiving item information.
+// Return value:
+//          Whether the call succeeded.
+FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV
+FPDFText_GetItemInfo(FPDF_TEXTPAGE text_page,
+                     int index,
+                     FPDF_TEXT_ITEM* out_item);
 
 // Experimental API.
 // Function: FPDFText_GetMatrix

@@ -1046,6 +1046,100 @@ TEST_F(FPDFTextEmbedderTest, GetFontInfo) {
                                      font_name.size(), nullptr));
 }
 
+TEST_F(FPDFTextEmbedderTest, GetItemInfo) {
+  ASSERT_TRUE(OpenDocument("hello_world.pdf"));
+  ScopedPage page = LoadScopedPage(0);
+  ASSERT_TRUE(page);
+
+  ScopedFPDFTextPage textpage(FPDFText_LoadPage(page.get()));
+  ASSERT_TRUE(textpage);
+
+  EXPECT_EQ(-1, FPDFText_CountItems(nullptr));
+
+  const int count = FPDFText_CountChars(textpage.get());
+  ASSERT_EQ(count, FPDFText_CountItems(textpage.get()));
+
+  FPDF_TEXT_ITEM item = {};
+  EXPECT_FALSE(FPDFText_GetItemInfo(nullptr, 0, &item));
+  EXPECT_FALSE(FPDFText_GetItemInfo(textpage.get(), -1, &item));
+  EXPECT_FALSE(FPDFText_GetItemInfo(textpage.get(), count, &item));
+  EXPECT_FALSE(FPDFText_GetItemInfo(textpage.get(), 0, nullptr));
+  EXPECT_EQ(0u, FPDFText_GetItemFontName(nullptr, 0, nullptr, 0));
+  EXPECT_EQ(0u, FPDFText_GetItemFontName(textpage.get(), -1, nullptr, 0));
+  EXPECT_EQ(0u, FPDFText_GetItemFontName(textpage.get(), count, nullptr, 0));
+
+  for (int i = 0; i < count; ++i) {
+    ASSERT_TRUE(FPDFText_GetItemInfo(textpage.get(), i, &item)) << i;
+
+    double left;
+    double right;
+    double bottom;
+    double top;
+    ASSERT_TRUE(
+        FPDFText_GetCharBox(textpage.get(), i, &left, &right, &bottom, &top))
+        << i;
+    EXPECT_DOUBLE_EQ(left, item.left) << i;
+    EXPECT_DOUBLE_EQ(right, item.right) << i;
+    EXPECT_DOUBLE_EQ(bottom, item.bottom) << i;
+    EXPECT_DOUBLE_EQ(top, item.top) << i;
+
+    FS_RECTF loose_rect;
+    ASSERT_TRUE(FPDFText_GetLooseCharBox(textpage.get(), i, &loose_rect)) << i;
+    EXPECT_FLOAT_EQ(loose_rect.left, item.loose_left) << i;
+    EXPECT_FLOAT_EQ(loose_rect.right, item.loose_right) << i;
+    EXPECT_FLOAT_EQ(loose_rect.bottom, item.loose_bottom) << i;
+    EXPECT_FLOAT_EQ(loose_rect.top, item.loose_top) << i;
+
+    double x;
+    double y;
+    ASSERT_TRUE(FPDFText_GetCharOrigin(textpage.get(), i, &x, &y)) << i;
+    EXPECT_DOUBLE_EQ(x, item.origin_x) << i;
+    EXPECT_DOUBLE_EQ(y, item.origin_y) << i;
+
+    const unsigned int unicode = FPDFText_GetUnicode(textpage.get(), i);
+    EXPECT_EQ(unicode != 0, item.has_unicode != 0) << i;
+    EXPECT_EQ(unicode, item.unicode) << i;
+    EXPECT_EQ(FPDFText_IsGenerated(textpage.get(), i), item.is_generated) << i;
+    EXPECT_DOUBLE_EQ(FPDFText_GetFontSize(textpage.get(), i), item.font_size)
+        << i;
+
+    if (!item.is_generated) {
+      int flags = -1;
+      const unsigned long font_info_len =
+          FPDFText_GetFontInfo(textpage.get(), i, nullptr, 0, &flags);
+      const unsigned long item_font_name_len =
+          FPDFText_GetItemFontName(textpage.get(), i, nullptr, 0);
+      EXPECT_EQ(font_info_len, item_font_name_len) << i;
+      EXPECT_EQ(flags, item.font_flags) << i;
+      EXPECT_EQ(FPDFText_GetFontWeight(textpage.get(), i), item.font_weight)
+          << i;
+      EXPECT_EQ(FPDF_TEXT_ITEM_FONT_TYPE1, item.font_type) << i;
+      EXPECT_GT(item.font_obj_num, 0u) << i;
+      EXPECT_EQ(unicode, item.char_code) << i;
+
+      std::vector<char> font_name(font_info_len);
+      std::vector<char> item_font_name(item_font_name_len);
+      EXPECT_EQ(font_info_len,
+                FPDFText_GetFontInfo(textpage.get(), i, font_name.data(),
+                                     font_name.size(), &flags))
+          << i;
+      EXPECT_EQ(item_font_name_len,
+                FPDFText_GetItemFontName(textpage.get(), i,
+                                         item_font_name.data(),
+                                         item_font_name.size()))
+          << i;
+      EXPECT_STREQ(font_name.data(), item_font_name.data()) << i;
+    } else {
+      EXPECT_EQ(0u, FPDFText_GetItemFontName(textpage.get(), i, nullptr, 0))
+          << i;
+      EXPECT_EQ(0, item.font_flags) << i;
+      EXPECT_EQ(-1, item.font_weight) << i;
+      EXPECT_EQ(FPDF_TEXT_ITEM_FONT_UNKNOWN, item.font_type) << i;
+      EXPECT_EQ(0u, item.font_obj_num) << i;
+    }
+  }
+}
+
 TEST_F(FPDFTextEmbedderTest, ToUnicode) {
   ASSERT_TRUE(OpenDocument("bug_583.pdf"));
   ScopedPage page = LoadScopedPage(0);

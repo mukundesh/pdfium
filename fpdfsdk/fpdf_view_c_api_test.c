@@ -437,6 +437,7 @@ int CheckPDFiumCApi() {
     CHK(FPDFLink_LoadWebLinks);
     CHK(FPDFText_ClosePage);
     CHK(FPDFText_CountChars);
+    CHK(FPDFText_CountItems);
     CHK(FPDFText_CountRects);
     CHK(FPDFText_FindClose);
     CHK(FPDFText_FindNext);
@@ -449,6 +450,8 @@ int CheckPDFiumCApi() {
     CHK(FPDFText_GetCharOrigin);
     CHK(FPDFText_GetFillColor);
     CHK(FPDFText_GetFontInfo);
+    CHK(FPDFText_GetItemFontName);
+    CHK(FPDFText_GetItemInfo);
     CHK(FPDFText_GetFontSize);
     CHK(FPDFText_GetFontWeight);
     CHK(FPDFText_GetLooseCharBox);

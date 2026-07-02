@@ -65,6 +65,10 @@ FPDF_EXPORT int FPDF_CALLCONV FPDFText_CountChars(FPDF_TEXTPAGE text_page) {
   return textpage ? textpage->CountChars() : -1;
 }
 
+FPDF_EXPORT int FPDF_CALLCONV FPDFText_CountItems(FPDF_TEXTPAGE text_page) {
+  return FPDFText_CountChars(text_page);
+}
+
 FPDF_EXPORT unsigned int FPDF_CALLCONV
 FPDFText_GetUnicode(FPDF_TEXTPAGE text_page, int index) {
   CPDF_TextPage* textpage = GetTextPageForValidIndex(text_page, index);
@@ -74,6 +78,29 @@ FPDFText_GetUnicode(FPDF_TEXTPAGE text_page, int index) {
 
   const CPDF_TextPage::CharInfo& charinfo = textpage->GetCharInfo(index);
   return charinfo.unicode();
+}
+
+FPDF_EXPORT unsigned long FPDF_CALLCONV
+FPDFText_GetItemFontName(FPDF_TEXTPAGE text_page,
+                         int index,
+                         void* buffer,
+                         unsigned long buflen) {
+  CPDF_TextPage* textpage = GetTextPageForValidIndex(text_page, index);
+  if (!textpage) {
+    return 0;
+  }
+
+  const CPDF_TextPage::CharInfo& charinfo = textpage->GetCharInfo(index);
+  if (!charinfo.text_object()) {
+    return 0;
+  }
+
+  RetainPtr<CPDF_Font> font = charinfo.text_object()->GetFont();
+  auto result_span = UNSAFE_BUFFERS(SpanFromFPDFApiArgs(buffer, buflen));
+  ByteString basefont = font->GetBaseFontName();
+  auto basefont_span = basefont.span_with_terminator();
+  fxcrt::try_spancpy(result_span, basefont_span);
+  return pdfium::checked_cast<unsigned long>(basefont_span.size());
 }
 
 FPDF_EXPORT FPDF_PAGEOBJECT FPDF_CALLCONV
@@ -285,6 +312,45 @@ FPDFText_GetLooseCharBox(FPDF_TEXTPAGE text_page, int index, FS_RECTF* rect) {
   }
 
   *rect = FSRectFFromCFXFloatRect(textpage->GetCharLooseBounds(index));
+  return true;
+}
+
+FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV
+FPDFText_GetItemInfo(FPDF_TEXTPAGE text_page,
+                     int index,
+                     FPDF_TEXT_ITEM* out_item) {
+  if (!out_item) {
+    return false;
+  }
+
+  CPDF_TextPage* textpage = GetTextPageForValidIndex(text_page, index);
+  if (!textpage) {
+    return false;
+  }
+
+  const CPDF_TextPage::CharInfo& charinfo = textpage->GetCharInfo(index);
+  out_item->char_code =
+      pdfium::checked_cast<unsigned long>(charinfo.char_code());
+  out_item->left = charinfo.char_box().left;
+  out_item->bottom = charinfo.char_box().bottom;
+  out_item->right = charinfo.char_box().right;
+  out_item->top = charinfo.char_box().top;
+  out_item->loose_left = charinfo.loose_char_box().left;
+  out_item->loose_bottom = charinfo.loose_char_box().bottom;
+  out_item->loose_right = charinfo.loose_char_box().right;
+  out_item->loose_top = charinfo.loose_char_box().top;
+  out_item->origin_x = charinfo.origin().x;
+  out_item->origin_y = charinfo.origin().y;
+  out_item->font_size = charinfo.font_size();
+  out_item->font_obj_num =
+      pdfium::checked_cast<unsigned long>(charinfo.font_obj_num());
+  out_item->font_flags = charinfo.font_flags();
+  out_item->font_weight = charinfo.font_weight();
+  out_item->font_type = charinfo.font_type();
+  out_item->is_generated =
+      charinfo.char_type() == CPDF_TextPage::CharType::kGenerated ? 1 : 0;
+  out_item->has_unicode = charinfo.unicode() != 0;
+  out_item->unicode = pdfium::checked_cast<unsigned int>(charinfo.unicode());
   return true;
 }
 
