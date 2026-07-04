@@ -757,6 +757,15 @@ FPDF_EXPORT int FPDF_CALLCONV FPDFFont_GetIsEmbedded(FPDF_FONT font) {
   return cfont->IsEmbedded() ? 1 : 0;
 }
 
+FPDF_EXPORT unsigned long FPDF_CALLCONV FPDFFont_GetObjNum(FPDF_FONT font) {
+  auto* cfont = CPDFFontFromFPDFFont(font);
+  if (!cfont) {
+    return 0;
+  }
+  RetainPtr<const CPDF_Dictionary> font_dict = cfont->GetFontDict();
+  return font_dict ? font_dict->GetObjNum() : 0;
+}
+
 FPDF_EXPORT int FPDF_CALLCONV FPDFFont_GetFlags(FPDF_FONT font) {
   auto* pFont = CPDFFontFromFPDFFont(font);
   if (!pFont) {

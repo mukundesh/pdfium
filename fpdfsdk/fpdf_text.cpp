@@ -331,6 +331,17 @@ FPDFText_GetItemInfo(FPDF_TEXTPAGE text_page,
   const CPDF_TextPage::CharInfo& charinfo = textpage->GetCharInfo(index);
   out_item->char_code =
       pdfium::checked_cast<unsigned long>(charinfo.char_code());
+
+  uint32_t glyph_id = 0;
+  if (charinfo.text_object()) {
+    RetainPtr<CPDF_Font> font = charinfo.text_object()->GetFont();
+    if (font) {
+      bool bVert = false;
+      glyph_id = static_cast<uint32_t>(font->GlyphFromCharCode(charinfo.char_code(), &bVert));
+    }
+  }
+  out_item->glyph_id = glyph_id;
+
   out_item->left = charinfo.char_box().left;
   out_item->bottom = charinfo.char_box().bottom;
   out_item->right = charinfo.char_box().right;

@@ -30,6 +30,7 @@ extern "C" {
 //          and font metadata.
 typedef struct FPDF_TEXT_ITEM_ {
   unsigned long char_code;
+  unsigned int glyph_id;
   double left;
   double bottom;
   double right;

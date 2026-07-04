@@ -1604,6 +1604,15 @@ FPDF_EXPORT FPDF_BOOL FPDF_CALLCONV FPDFFont_GetFontData(FPDF_FONT font,
 FPDF_EXPORT int FPDF_CALLCONV FPDFFont_GetIsEmbedded(FPDF_FONT font);
 
 // Experimental API.
+// Get the indirect object number of a font.
+//
+// font - the handle to the font object.
+//
+// Returns the indirect object number of the font, 0 on failure or if the font
+// is not associated with an object number.
+FPDF_EXPORT unsigned long FPDF_CALLCONV FPDFFont_GetObjNum(FPDF_FONT font);
+
+// Experimental API.
 // Get the descriptor flags of a font.
 //
 // font - the handle to the font object.
