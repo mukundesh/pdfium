@@ -213,7 +213,7 @@ jobs:
         working-directory: src/pdfium
         shell: bash
         run: |
-          gn gen out/Release --args='is_debug=false is_component_build=true clang_use_chrome_plugins=false use_custom_libcxx=false'
+          gn gen out/Release --args='is_debug=false is_component_build=true clang_use_chrome_plugins=false'
 
       - name: Build PDFium library
         working-directory: src/pdfium
